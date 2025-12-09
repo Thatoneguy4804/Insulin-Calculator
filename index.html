@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Insulin Dose Calculator Pro</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #ff6b35 0%, #f7931e 50%, #ffffff 100%);
+            min-height: 100vh;
+            padding: 20px;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            width: 200%;
+            height: 200%;
+            top: -50%;
+            left: -50%;
+            z-index: 0;
+            background: radial-gradient(circle at 20% 50%, rgba(255, 107, 53, 0.3), transparent 50%),
+                        radial-gradient(circle at 80% 80%, rgba(247, 147, 30, 0.3), transparent 50%),
+                        radial-gradient(circle at 40% 20%, rgba(255, 165, 0, 0.2), transparent 50%);
+            animation: gradientShift 15s ease infinite;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { transform: translate(0, 0); }
+            50% { transform: translate(-30px, -30px); }
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+            color: #1a1a1a;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+            color: #1a1a1a;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 24px;
+            padding: 30px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            border: 1px solid rgba(255, 107, 53, 0.3);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px 0 rgba(102, 126, 234, 0.4);
+        }
+
+        .card h2 {
+            color: #1a1a1a;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            text-shadow: none;
+        }
+
+        .warning {
+            background: rgba(255, 193, 7, 0.3);
+            border-left: 4px solid #ffc107;
+            padding: 12px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            font-size: 0.85em;
+            color: #1a1a1a;
+            backdrop-filter: blur(10px);
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #1a1a1a;
+            font-weight: 600;
+            font-size: 0.95em;
+            text-shadow: none;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid rgba(255, 107, 53, 0.5);
+            border-radius: 12px;
+            font-size: 1em;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.9);
+            color: #1a1a1a;
+            backdrop-filter: blur(10px);
+        }
+
+        input::placeholder {
+            color: #666;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #ff6b35;
+            background: rgba(255, 255, 255, 1);
+            box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.3);
+        }
+
+        select {
+            cursor: pointer;
+        }
+
+        select option {
+            background: #1a1a2e;
+            color: #fff;
+        }
+
+        .unit {
+            color: #333;
+            font-size: 0.85em;
+            margin-top: 4px;
+        }
+
+        button {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            margin-top: 10px;
+            box-shadow: 0 4px 15px rgba(255, 107, 53, 0.4);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 107, 53, 0.6);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 25px;
+            background: rgba(255, 107, 53, 0.2);
+            border-radius: 16px;
+            text-align: center;
+            display: none;
+            animation: slideIn 0.4s ease;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 107, 53, 0.3);
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result-label {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9em;
+            margin-bottom: 8px;
+        }
+
+        .result-value {
+            font-size: 2.5em;
+            font-weight: 700;
+            color: #ff6b35;
+            margin-bottom: 8px;
+            text-shadow: 0 2px 10px rgba(255, 107, 53, 0.5);
+        }
+
+        .result-unit {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.95em;
+        }
+
+        .error {
+            background: rgba(220, 53, 69, 0.3);
+            border-left: 4px solid #dc3545;
+            padding: 12px;
+            margin-top: 15px;
+            border-radius: 8px;
+            color: #721c24;
+            display: none;
+            backdrop-filter: blur(10px);
+        }
+
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin-top: 20px;
+        }
+
+        .graph-card {
+            grid-column: 1 / -1;
+        }
+
+        .chart-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .chart-controls select {
+            flex: 1;
+            min-width: 150px;
+        }
+
+        .history-list {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+
+        .history-list::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .history-list::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        .history-list::-webkit-scrollbar-thumb {
+            background: rgba(255, 107, 53, 0.5);
+            border-radius: 10px;
+        }
+
+        .history-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            border-left: 4px solid #ff6b35;
+            backdrop-filter: blur(10px);
+        }
+
+        .history-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .history-time {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.85em;
+        }
+
+        .history-dose {
+            font-weight: 700;
+            color: #fff;
+            font-size: 1.2em;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .history-details {
+            font-size: 0.9em;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .clear-btn {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            padding: 10px;
+            font-size: 0.9em;
+        }
+
+        .clear-btn:hover {
+            box-shadow: 0 6px 20px rgba(220, 53, 69, 0.6);
+        }
+
+        .export-btn {
+            background: linear-gradient(135deg, #28a745 0%, #218838 100%);
+            padding: 10px;
+            font-size: 0.9em;
+        }
+
+        .export-btn:hover {
+            box-shadow: 0 6px 20px rgba(40, 167, 69, 0.6);
+        }
+
+        .zone-info {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+            font-size: 0.85em;
+        }
+
+        .zone-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            color: #1a1a1a;
+            font-weight: 600;
+        }
+
+        .zone-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 107, 53, 0.3);
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.85em;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            color: #ff6b35;
+            font-size: 1.5em;
+            font-weight: 700;
+            text-shadow: none;
+        }
+
+        .info-badge {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.9);
+            color: #ff6b35;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            margin-top: 8px;
+            border: 2px solid #ff6b35;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💉 Insulin Calculator Pro</h1>
+            <p>Smart dose calculation with adaptive ISF</p>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <h2>Calculate Dose</h2>
+                
+                <div class="warning">
+                    ⚠️ <strong>Medical Disclaimer:</strong> For educational purposes only. Always consult your healthcare provider.
+                </div>
+
+                <div class="input-group">
+                    <label for="bloodGlucose">Current Blood Glucose</label>
+                    <input type="number" id="bloodGlucose" placeholder="Enter current BG" step="0.1" min="0">
+                    <div class="unit">mg/dL</div>
+                </div>
+
+                <div class="input-group">
+                    <label for="targetBG">Target Blood Glucose</label>
+                    <input type="number" id="targetBG" placeholder="Enter target" value="100" step="0.1" min="0">
+                    <div class="unit">mg/dL</div>
+                </div>
+
+                <div class="input-group">
+                    <label for="baseISF">Baseline ISF</label>
+                    <input type="number" id="baseISF" placeholder="Your baseline ISF" value="50" step="0.1" min="0.1" oninput="updateISFPreview()">
+                    <div class="unit">mg/dL per unit (at rest)</div>
+                </div>
+
+                <div class="input-group">
+                    <label for="activityLevel">Activity Level 🏃</label>
+                    <select id="activityLevel" onchange="updateISFPreview()">
+                        <option value="rest">Rest Day (Baseline ISF)</option>
+                        <option value="light">Light Activity (1.15x stronger)</option>
+                        <option value="moderate">Moderate Exercise (1.3x stronger)</option>
+                        <option value="intense">Intense Workout (1.5x stronger)</option>
+                        <option value="sick">Sick Day (0.75x weaker)</option>
+                        <option value="stress">High Stress (0.85x weaker)</option>
+                    </select>
+                    <div class="unit" id="isfAdjustment">Using baseline ISF</div>
+                </div>
+
+                <div class="input-group">
+                    <label for="exerciseDuration">Exercise Duration ⏱️</label>
+                    <select id="exerciseDuration" onchange="updateISFPreview()">
+                        <option value="none">No Exercise Today</option>
+                        <option value="short">Short (&lt; 30 min) +5%</option>
+                        <option value="medium">Medium (30-60 min) +12%</option>
+                        <option value="long">Long (60-120 min) +20%</option>
+                        <option value="verylong">Very Long (&gt; 120 min) +30%</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label for="caloriesBurned">Estimated Calories Burned 🔥</label>
+                    <select id="caloriesBurned" onchange="updateISFPreview()">
+                        <option value="0">0 - Minimal</option>
+                        <option value="150">100-200 cal (+8%)</option>
+                        <option value="300">200-400 cal (+15%)</option>
+                        <option value="500">400-600 cal (+22%)</option>
+                        <option value="750">600+ cal (+28%)</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label for="timeSinceExercise">Time Since Exercise 🕐</label>
+                    <select id="timeSinceExercise" onchange="updateISFPreview()">
+                        <option value="during">During/Just Finished</option>
+                        <option value="1hour">1-2 hours ago</option>
+                        <option value="3hour">3-4 hours ago</option>
+                        <option value="6hour">5-8 hours ago</option>
+                        <option value="12hour">8+ hours ago</option>
+                    </select>
+                </div>
+
+                <div class="info-badge" id="adjustedISF">Adjusted ISF: 50.0</div>
+                <div class="info-badge" id="sensitivityChange" style="background: rgba(16, 185, 129, 0.3); border-color: rgba(16, 185, 129, 0.5); margin-left: 8px;">No change</div>
+
+                <button onclick="calculateDose()">Calculate Dose</button>
+
+                <div class="result" id="result">
+                    <div class="result-label">Recommended Correction Dose</div>
+                    <div class="result-value" id="doseValue">0</div>
+                    <div class="result-unit">units of insulin</div>
+                </div>
+
+                <div class="error" id="error"></div>
+            </div>
+
+            <div class="card">
+                <h2>Statistics</h2>
+                <div class="stats-grid" id="statsGrid">
+                    <div class="stat-card">
+                        <div class="stat-label">Entries</div>
+                        <div class="stat-value" id="statEntries">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Avg BG</div>
+                        <div class="stat-value" id="statAvgBG">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Avg Dose</div>
+                        <div class="stat-value" id="statAvgDose">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">In Range</div>
+                        <div class="stat-value" id="statInRange">-</div>
+                    </div>
+                </div>
+
+                <h2 style="margin-top: 25px;">Recent History</h2>
+                <div class="history-list" id="historyList">
+                    <p style="color: rgba(255,255,255,0.7); text-align: center; padding: 20px;">No entries yet. Calculate your first dose!</p>
+                </div>
+                <div class="button-group">
+                    <button class="export-btn" onclick="exportData()">📊 Export CSV</button>
+                    <button class="clear-btn" onclick="clearHistory()">🗑️ Clear All</button>
+                </div>
+            </div>
+
+            <div class="card graph-card">
+                <h2>Blood Glucose & Insulin Trend</h2>
+                
+                <div class="chart-controls">
+                    <select id="timeRange" onchange="updateChartRange()">
+                        <option value="all">All Time</option>
+                        <option value="10">Last 10 Entries</option>
+                        <option value="20">Last 20 Entries</option>
+                        <option value="30">Last 30 Entries</option>
+                    </select>
+                    
+                    <select id="targetZone" onchange="updateTargetZone()">
+                        <option value="70-180">Target Zone: 70-180 mg/dL</option>
+                        <option value="80-130">Target Zone: 80-130 mg/dL</option>
+                        <option value="70-140">Target Zone: 70-140 mg/dL</option>
+                        <option value="custom">Custom Range</option>
+                    </select>
+                </div>
+
+                <div class="zone-info">
+                    <div class="zone-item">
+                        <div class="zone-color" style="background: rgba(220, 53, 69, 0.4);"></div>
+                        <span>Low (&lt;70)</span>
+                    </div>
+                    <div class="zone-item">
+                        <div class="zone-color" style="background: rgba(16, 185, 129, 0.4);"></div>
+                        <span>Target Range</span>
+                    </div>
+                    <div class="zone-item">
+                        <div class="zone-color" style="background: rgba(255, 193, 7, 0.4);"></div>
+                        <span>High (&gt;180)</span>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <canvas id="myChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let historyData = [];
+        let chart;
+        let targetZoneMin = 70;
+        let targetZoneMax = 180;
+
+        function calculateAdjustedISF() {
+            const baseISF = parseFloat(document.getElementById('baseISF').value) || 50;
+            const activity = document.getElementById('activityLevel').value;
+            const duration = document.getElementById('exerciseDuration').value;
+            const calories = parseInt(document.getElementById('caloriesBurned').value) || 0;
+            const timeSince = document.getElementById('timeSinceExercise').value;
+
+            let multiplier = 1.0;
+
+            switch(activity) {
+                case 'rest': multiplier = 1.0; break;
+                case 'light': multiplier = 1.15; break;
+                case 'moderate': multiplier = 1.3; break;
+                case 'intense': multiplier = 1.5; break;
+                case 'sick': multiplier = 0.75; break;
+                case 'stress': multiplier = 0.85; break;
+            }
+
+            if (duration !== 'none' && activity !== 'sick' && activity !== 'stress') {
+                switch(duration) {
+                    case 'short': multiplier += 0.05; break;
+                    case 'medium': multiplier += 0.12; break;
+                    case 'long': multiplier += 0.20; break;
+                    case 'verylong': multiplier += 0.30; break;
+                }
+            }
+
+            if (calories > 0 && activity !== 'sick' && activity !== 'stress') {
+                switch(calories) {
+                    case 150: multiplier += 0.08; break;
+                    case 300: multiplier += 0.15; break;
+                    case 500: multiplier += 0.22; break;
+                    case 750: multiplier += 0.28; break;
+                }
+            }
+
+            if (duration !== 'none' && activity !== 'sick' && activity !== 'rest' && activity !== 'stress') {
+                let decayFactor = 1.0;
+                switch(timeSince) {
+                    case 'during': decayFactor = 1.0; break;
+                    case '1hour': decayFactor = 0.85; break;
+                    case '3hour': decayFactor = 0.65; break;
+                    case '6hour': decayFactor = 0.40; break;
+                    case '12hour': decayFactor = 0.15; break;
+                }
+                
+                const bonusMultiplier = multiplier - 1.0;
+                multiplier = 1.0 + (bonusMultiplier * decayFactor);
+            }
+
+            return baseISF * multiplier;
+        }
+
+        function updateISFPreview() {
+            const adjustedISF = calculateAdjustedISF();
+            const baseISF = parseFloat(document.getElementById('baseISF').value) || 50;
+            const activity = document.getElementById('activityLevel').value;
+            const percentChange = ((adjustedISF - baseISF) / baseISF * 100);
+            
+            let activityText = '';
+            switch(activity) {
+                case 'rest': activityText = 'Using baseline ISF'; break;
+                case 'light': activityText = 'Light activity - slightly stronger sensitivity'; break;
+                case 'moderate': activityText = 'Moderate exercise - enhanced sensitivity'; break;
+                case 'intense': activityText = 'Intense workout - significantly stronger'; break;
+                case 'sick': activityText = 'Sick day - reduced insulin sensitivity'; break;
+                case 'stress': activityText = 'High stress - moderately reduced sensitivity'; break;
+            }
+            
+            document.getElementById('isfAdjustment').textContent = activityText;
+            document.getElementById('adjustedISF').textContent = `Adjusted ISF: ${adjustedISF.toFixed(1)}`;
+            
+            const changeElement = document.getElementById('sensitivityChange');
+            if (percentChange > 5) {
+                changeElement.textContent = `+${percentChange.toFixed(0)}% stronger`;
+                changeElement.style.background = 'rgba(16, 185, 129, 0.3)';
+                changeElement.style.borderColor = 'rgba(16, 185, 129, 0.5)';
+            } else if (percentChange < -5) {
+                changeElement.textContent = `${percentChange.toFixed(0)}% weaker`;
+                changeElement.style.background = 'rgba(255, 193, 7, 0.3)';
+                changeElement.style.borderColor = 'rgba(255, 193, 7, 0.5)';
+            } else {
+                changeElement.textContent = 'No significant change';
+                changeElement.style.background = 'rgba(255, 107, 53, 0.3)';
+                changeElement.style.borderColor = 'rgba(255, 107, 53, 0.5)';
+            }
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('myChart').getContext('2d');
+            
+            const lowZonePlugin = {
+                id: 'lowZone',
+                beforeDatasetsDraw(chart) {
+                    const { ctx, chartArea: { left, right, top, bottom }, scales: { y } } = chart;
+                    
+                    ctx.save();
+                    ctx.fillStyle = 'rgba(220, 53, 69, 0.15)';
+                    const lowTop = y.getPixelForValue(70);
+                    ctx.fillRect(left, lowTop, right - left, bottom - lowTop);
+                    
+                    ctx.fillStyle = 'rgba(16, 185, 129, 0.15)';
+                    const targetTop = y.getPixelForValue(targetZoneMax);
+                    const targetBottom = y.getPixelForValue(targetZoneMin);
+                    ctx.fillRect(left, targetTop, right - left, targetBottom - targetTop);
+                    
+                    ctx.fillStyle = 'rgba(255, 193, 7, 0.15)';
+                    const highBottom = y.getPixelForValue(targetZoneMax);
+                    ctx.fillRect(left, top, right - left, highBottom - top);
+                    
+                    ctx.restore();
+                }
+            };
+
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Blood Glucose (mg/dL)',
+                        data: [],
+                        borderColor: '#ff6b35',
+                        backgroundColor: 'rgba(255, 107, 53, 0.2)',
+                        tension: 0.4,
+                        yAxisID: 'y',
+                        pointRadius: 6,
+                        pointHoverRadius: 8,
+                        fill: true,
+                        pointBackgroundColor: '#ff6b35',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2
+                    }, {
+                        label: 'Insulin Dose (units)',
+                        data: [],
+                        borderColor: '#f7931e',
+                        backgroundColor: 'rgba(247, 147, 30, 0.2)',
+                        tension: 0.4,
+                        yAxisID: 'y1',
+                        pointRadius: 6,
+                        pointHoverRadius: 8,
+                        fill: true,
+                        pointBackgroundColor: '#f7931e',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                color: '#1a1a1a',
+                                font: { size: 13, weight: 'bold' }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(255, 255, 255, 0.98)',
+                            padding: 12,
+                            titleFont: { size: 14 },
+                            bodyFont: { size: 13 },
+                            borderColor: 'rgba(255, 107, 53, 0.8)',
+                            borderWidth: 2,
+                            titleColor: '#1a1a1a',
+                            bodyColor: '#1a1a1a'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Blood Glucose (mg/dL)',
+                                color: '#1a1a1a',
+                                font: { weight: 'bold' }
+                            },
+                            min: 40,
+                            max: 300,
+                            ticks: { color: '#1a1a1a' },
+                            grid: { color: 'rgba(0, 0, 0, 0.1)' }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Insulin Dose (units)',
+                                color: '#1a1a1a',
+                                font: { weight: 'bold' }
+                            },
+                            grid: { drawOnChartArea: false },
+                            beginAtZero: true,
+                            ticks: { color: '#1a1a1a' }
+                        },
+                        x: {
+                            ticks: { color: '#1a1a1a' },
+                            grid: { color: 'rgba(0, 0, 0, 0.1)' }
+                        }
+                    }
+                },
+                plugins: [lowZonePlugin]
+            });
+        }
+
+        function updateChart() {
+            const range = document.getElementById('timeRange').value;
+            let dataToShow = historyData;
+            
+            if (range !== 'all') {
+                const limit = parseInt(range);
+                dataToShow = historyData.slice(-limit);
+            }
+
+            const labels = dataToShow.map(d => d.time);
+            const bgData = dataToShow.map(d => d.bloodGlucose);
+            const insulinData = dataToShow.map(d => d.dose);
+
+            chart.data.labels = labels;
+            chart.data.datasets[0].data = bgData;
+            chart.data.datasets[1].data = insulinData;
+            chart.update();
+            
+            updateStats();
+        }
+
+        function updateStats() {
+            const totalEntries = historyData.length;
+            document.getElementById('statEntries').textContent = totalEntries;
+            
+            if (totalEntries === 0) {
+                document.getElementById('statAvgBG').textContent = '-';
+                document.getElementById('statAvgDose').textContent = '-';
+                document.getElementById('statInRange').textContent = '-';
+                return;
+            }
+            
+            const avgBG = historyData.reduce((sum, d) => sum + d.bloodGlucose, 0) / totalEntries;
+            document.getElementById('statAvgBG').textContent = avgBG.toFixed(0);
+            
+            const avgDose = historyData.reduce((sum, d) => sum + d.dose, 0) / totalEntries;
+            document.getElementById('statAvgDose').textContent = avgDose.toFixed(1);
+            
+            const inRange = historyData.filter(d => d.bloodGlucose >= targetZoneMin && d.bloodGlucose <= targetZoneMax).length;
+            const percentage = ((inRange / totalEntries) * 100).toFixed(0);
+            document.getElementById('statInRange').textContent = percentage + '%';
+        }
+
+        function updateHistory() {
+            const historyList = document.getElementById('historyList');
+            
+            if (historyData.length === 0) {
+                historyList.innerHTML = '<p style="color: #666; text-align: center; padding: 20px;">No entries yet. Calculate your first dose!</p>';
+                return;
+            }
+
+            historyList.innerHTML = historyData.map(entry => `
+                <div class="history-item">
+                    <div class="history-item-header">
+                        <span class="history-time">${entry.time}</span>
+                        <span class="history-dose">${entry.dose.toFixed(1)} units</span>
+                    </div>
+                    <div class="history-details">
+                        BG: ${entry.bloodGlucose} mg/dL | ISF: ${entry.adjustedISF.toFixed(1)} | ${entry.activity}
+                    </div>
+                </div>
+            `).reverse().join('');
+        }
+
+        function calculateDose() {
+            const bg = parseFloat(document.getElementById('bloodGlucose').value);
+            const target = parseFloat(document.getElementById('targetBG').value);
+            const adjustedISF = calculateAdjustedISF();
+            const errorDiv = document.getElementById('error');
+            const resultDiv = document.getElementById('result');
+
+            errorDiv.style.display = 'none';
+            
+            if (!bg || !target || !adjustedISF) {
+                errorDiv.textContent = 'Please fill in all required fields';
+                errorDiv.style.display = 'block';
+                resultDiv.style.display = 'none';
+                return;
+            }
+
+            if (bg < 0 || target < 0) {
+                errorDiv.textContent = 'Blood glucose values must be positive';
+                errorDiv.style.display = 'block';
+                resultDiv.style.display = 'none';
+                return;
+            }
+
+            const correction = (bg - target) / adjustedISF;
+            const dose = Math.max(0, correction);
+
+            document.getElementById('doseValue').textContent = dose.toFixed(1);
+            resultDiv.style.display = 'block';
+
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+            const activity = document.getElementById('activityLevel').options[document.getElementById('activityLevel').selectedIndex].text;
+            
+            historyData.push({
+                time: timeStr,
+                bloodGlucose: bg,
+                dose: dose,
+                adjustedISF: adjustedISF,
+                activity: activity,
+                timestamp: now
+            });
+
+            updateChart();
+            updateHistory();
+        }
+
+        function clearHistory() {
+            if (historyData.length === 0) return;
+            if (confirm('Are you sure you want to clear all history?')) {
+                historyData = [];
+                updateChart();
+                updateHistory();
+            }
+        }
+
+        function exportData() {
+            if (historyData.length === 0) {
+                alert('No data to export');
+                return;
+            }
+
+            let csv = 'Time,Blood Glucose (mg/dL),Insulin Dose (units),Adjusted ISF,Activity\n';
+            historyData.forEach(entry => {
+                csv += `${entry.time},${entry.bloodGlucose},${entry.dose.toFixed(1)},${entry.adjustedISF.toFixed(1)},${entry.activity}\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `insulin-data-${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            window.URL.revokeObjectURL(url);
+        }
+
+        function updateChartRange() {
+            updateChart();
+        }
+
+        function updateTargetZone() {
+            const zone = document.getElementById('targetZone').value;
+            
+            if (zone === 'custom') {
+                const min = prompt('Enter minimum target (mg/dL):', '70');
+                const max = prompt('Enter maximum target (mg/dL):', '180');
+                if (min && max) {
+                    targetZoneMin = parseInt(min);
+                    targetZoneMax = parseInt(max);
+                }
+            } else {
+                const [min, max] = zone.split('-').map(Number);
+                targetZoneMin = min;
+                targetZoneMax = max;
+            }
+            
+            updateChart();
+        }
+
+        window.onload = function() {
+            initChart();
+            updateISFPreview();
+        };
+    </script>
+</body>
+</html>
